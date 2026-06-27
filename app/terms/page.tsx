@@ -1,10 +1,12 @@
 import { Metadata } from 'next'
-import { prisma } from "@/lib/database"
+import { prisma } from "@/lib/database";
 
 export const metadata: Metadata = {
   title: 'Terms of Service | The Weather & Everything',
   description: 'Read our terms of service and usage guidelines.',
 }
+
+export const revalidate = 3600
 
 async function getTermsOfService() {
   try {
@@ -49,44 +51,26 @@ function getDefaultTermsOfService() {
     <h2>Content</h2>
     <p>Our website may contain user-generated content. We do not endorse or guarantee the accuracy of such content. Users are responsible for the content they post.</p>
 
-    <h2>Donations and Payments</h2>
-    <p>All donations are processed securely. By making a donation, you agree to our payment terms and acknowledge that donations are typically not tax-deductible unless specified otherwise.</p>
+    <h2>Disclaimer of Warranties</h2>
+    <p>The materials on our website are provided on an "as is" basis. We make no warranties, expressed or implied, about the suitability or accuracy of the information.</p>
 
-    <h2>Termination</h2>
-    <p>We may terminate or suspend access to our service immediately, without prior notice, for any reason whatsoever, including without limitation if you breach the Terms.</p>
+    <h2>Limitation of Liability</h2>
+    <p>In no event shall The Weather & Everything, nor its directors, employees, or agents, be liable for any loss, damage, or injury arising from the use of these materials.</p>
 
-    <h2>Disclaimer</h2>
-    <p>The materials on our website are provided on an 'as is' basis. We make no warranties, expressed or implied, and hereby disclaim and negate all other warranties including without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
-
-    <h2>Limitations</h2>
-    <p>In no event shall The Weather & Everything or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on our website.</p>
+    <h2>Changes to Terms</h2>
+    <p>We reserve the right to modify these terms at any time. Continued use of the site constitutes acceptance of the revised terms.</p>
 
     <h2>Governing Law</h2>
-    <p>These terms and conditions are governed by and construed in accordance with the laws of Nigeria and you irrevocably submit to the exclusive jurisdiction of the courts in that state or location.</p>
-
-    <h2>Contact Information</h2>
-    <p>If you have any questions about these Terms of Service, please contact us at legal@twe.org.</p>
+    <p>This agreement shall be governed by the laws of Nigeria without consideration of conflict of law principles.</p>
   `
 }
 
-export default async function TermsOfServicePage() {
+export default async function TermsPage() {
   const content = await getTermsOfService()
 
   return (
-    <main className="min-h-screen">
-      <section className="relative min-h-[80vh] flex items-center overflow-hidden pt-20 bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-8">
-            <h1 className="text-4xl md:text-6xl font-hartone font-bold text-foreground">Terms of Service</h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">Please read these terms carefully before using our website and services.</p>
-          </div>
-        </div>
-      </section>
-      <section className="py-16 bg-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="prose prose-lg dark:prose-invert mx-auto" dangerouslySetInnerHTML={{ __html: content }} />
-        </div>
-      </section>
-    </main>
+    <div className="container py-8 mx-auto prose prose-gray dark:prose-invert max-w-3xl">
+      <div dangerouslySetInnerHTML={{ __html: content }} />
+    </div>
   )
 }

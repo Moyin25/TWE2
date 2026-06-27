@@ -15,7 +15,19 @@ app.prepare().then(() => {
   });
 
   // Initialize WebSocket server
-  notificationWebSocket.initialize(server);
+  notificationWebSocket.initialize();
+
+  server.on('upgrade', (request, socket, head) => {
+    const { pathname } = parse(request.url, true);
+    if (pathname === '/api/ws/notifications') {
+        notificationWebSocket.wss.handleUpgrade(request, socket, head, (ws) => {
+            notificationWebSocket.wss.emit('connection', ws, request);
+        });
+    }
+    else {
+        socket.destroy();
+    }
+});
 
   const port = process.env.PORT || 3000;
   server.listen(port, (err) => {

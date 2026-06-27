@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server'
 import { AuthService } from '@/lib/auth'
 
@@ -14,10 +13,13 @@ export async function POST(request: NextRequest) {
       message: 'Logout successful',
     })
 
-    // Clear cookies
+    // Clear all authentication-related cookies
     response.cookies.delete('accessToken')
     response.cookies.delete('refreshToken')
+    
+    // Also clear any potential role or user state cookies
     response.cookies.delete('userRole')
+    response.cookies.delete('user')
 
     return response
   } catch (error: any) {

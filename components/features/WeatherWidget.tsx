@@ -30,22 +30,34 @@ export default function WeatherWidget() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const getFallbackWeather = (locationData?: LocationData): WeatherData => ({
+    temperature: 28,
+    condition: "Clouds",
+    humidity: 74,
+    location: locationData
+      ? `${locationData.city}${locationData.country ? ', ' + locationData.country : ''}`
+      : "Lagos, Nigeria",
+    description: "Local snapshot",
+    windSpeed: 3,
+    feelsLike: 28
+  })
+
   // Get weather icon based on condition
   const getWeatherIcon = (condition: string, description: string) => {
     const iconClass = "h-6 w-6"
     
     if (condition === "Clear") {
-      return <Sun className={`${iconClass} text-yellow-500`} />
+      return <Sun className={`${iconClass} text-green-light`} />
     } else if (condition === "Clouds") {
-      return <Cloud className={`${iconClass} text-gray-500`} />
+      return <Cloud className={`${iconClass} text-white/70`} />
     } else if (condition === "Rain" || condition === "Drizzle") {
-      return <CloudRain className={`${iconClass} text-blue-500`} />
+      return <CloudRain className={`${iconClass} text-green-light`} />
     } else if (condition === "Snow") {
-      return <CloudSnow className={`${iconClass} text-blue-200`} />
+      return <CloudSnow className={`${iconClass} text-white/80`} />
     } else if (condition === "Mist" || condition === "Fog" || condition === "Haze") {
-      return <Wind className={`${iconClass} text-gray-400`} />
+      return <Wind className={`${iconClass} text-gray-300`} />
     } else {
-      return <Cloud className={`${iconClass} text-gray-500`} />
+      return <Cloud className={`${iconClass} text-white/70`} />
     }
   }
 
@@ -84,56 +96,38 @@ export default function WeatherWidget() {
     return conditions[code] || { condition: "Clouds", description: "Unknown" }
   }
 
-  // Get user's location
+  // Get user's location without blocking the hero on reverse-geocoding.
   const getUserLocation = () => {
-    return new Promise<LocationData>((resolve, reject) => {
+    return new Promise<LocationData>((resolve) => {
+      const fallbackLocation = {
+        lat: 6.5244,
+        lon: 3.3792,
+        city: "Lagos",
+        country: "Nigeria"
+      }
+
       if (!navigator.geolocation) {
-        // Fallback to default location (Lagos, Nigeria)
-        resolve({
-          lat: 6.5244,
-          lon: 3.3792,
-          city: "Lagos",
-          country: "Nigeria"
-        })
+        resolve(fallbackLocation)
         return
       }
 
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
           const { latitude, longitude } = position.coords
-
-          try {
-            // Get city name from coordinates using Nominatim (OpenStreetMap)
-            const geoResponse = await axios.get(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-            )
-
-            const address = geoResponse.data.address
-            const city = address?.city || address?.town || address?.village || address?.hamlet || "Unknown"
-            const country = address?.country || ""
-
-            resolve({
-              lat: latitude,
-              lon: longitude,
-              city,
-              country
-            })
-          } catch (error) {
-            resolve({
-              lat: latitude,
-              lon: longitude,
-              city: "Unknown Location",
-              country: ""
-            })
-          }
+          resolve({
+            lat: latitude,
+            lon: longitude,
+            city: "Your area",
+            country: ""
+          })
         },
-        (error) => {
-          reject(new Error("Location access denied or failed. Please enable location permissions in your browser and ensure the site is accessed over HTTPS."))
+        () => {
+          resolve(fallbackLocation)
         },
         {
-          timeout: 10000,
+          timeout: 2500,
           maximumAge: 300000, // 5 minutes
-          enableHighAccuracy: true
+          enableHighAccuracy: false
         }
       )
     })
@@ -143,7 +137,8 @@ export default function WeatherWidget() {
   const fetchWeatherData = async (locationData: LocationData) => {
     try {
       const response = await axios.get(
-        `https://api.open-meteo.com/v1/forecast?latitude=${locationData.lat}&longitude=${locationData.lon}&current_weather=true&windspeed_unit=ms&hourly=relative_humidity_2m`
+        `https://api.open-meteo.com/v1/forecast?latitude=${locationData.lat}&longitude=${locationData.lon}&current_weather=true&windspeed_unit=ms&hourly=relative_humidity_2m`,
+        { timeout: 3000 }
       )
 
       const data = response.data
@@ -162,7 +157,7 @@ export default function WeatherWidget() {
 
       setWeather(weatherData)
     } catch (error) {
-      throw new Error("Failed to fetch weather data")
+      setWeather(getFallbackWeather(locationData))
     }
   }
 
@@ -170,7 +165,8 @@ export default function WeatherWidget() {
   useEffect(() => {
     const initializeWeather = async () => {
       try {
-        setIsLoading(true)
+        setWeather(getFallbackWeather())
+        setIsLoading(false)
         setError(null)
         
         
@@ -179,7 +175,7 @@ export default function WeatherWidget() {
         
         await fetchWeatherData(locationData)
       } catch (error) {
-        setError(error instanceof Error ? error.message : "Failed to load weather data")
+        setWeather(getFallbackWeather())
       } finally {
         setIsLoading(false)
       }

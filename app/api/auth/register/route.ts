@@ -45,7 +45,12 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       message: 'User created successfully',
       user: created,
-      redirectUrl: created.role === UserRole.ADMIN ? '/dashboard/admin' : '/auth/confirmation',
+      redirectUrl:
+        created.role === UserRole.ADMIN
+          ? '/dashboard/admin'
+          : created.role === UserRole.SPONSOR
+          ? '/dashboard/sponsor'
+          : '/dashboard/volunteer',
     }, { status: 201 })
 
     response.cookies.set('accessToken', accessToken, {

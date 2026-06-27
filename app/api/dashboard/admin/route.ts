@@ -3,6 +3,9 @@ import { prisma } from '@/lib/database'
 import { withAuth } from '@/lib/middleware/auth'
 import { UserRole, CampaignStatus, PostStatus } from '@prisma/client'
 
+// Disable static generation for this route since it uses authentication headers
+export const dynamic = 'force-dynamic';
+
 function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
@@ -50,13 +53,22 @@ async function handler(request: NextRequest) {
 
   return NextResponse.json({
     stats: {
-      users: { total: totalUsers, admins, volunteers, sponsors },
-      campaigns: { total: totalCampaigns, active: activeCampaigns, draft: draftCampaigns, completed: completedCampaigns },
-      posts: { published: publishedPosts, draft: draftPosts },
-      donations: { total: Number((totalDonationsAgg._sum.amount || 0).toFixed(2)) },
+      totalUsers,
+      volunteers,
+      sponsors,
+      admins,
+      totalCampaigns,
+      activeCampaigns,
+      draftCampaigns,
+      completedCampaigns,
+      publishedPosts,
+      draftPosts,
+      totalDonations: Number(totalDonationsAgg._sum.amount || 0),
     },
-    series: { donationsByMonth: donationsSeries, topCampaigns },
-    recent: { donations: recentDonations, users: recentUsers },
+    recentDonations,
+    recentUsers,
+    donationsSeries,
+    topCampaigns,
   })
 }
 

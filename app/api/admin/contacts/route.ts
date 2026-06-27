@@ -3,6 +3,9 @@ import { prisma } from '@/lib/database'
 import { withAuth } from '@/lib/middleware/auth'
 import { UserRole, ContactStatus } from '@prisma/client'
 
+// Disable static generation for this route since it uses authentication headers
+export const dynamic = 'force-dynamic';
+
 async function getContactsHandler(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

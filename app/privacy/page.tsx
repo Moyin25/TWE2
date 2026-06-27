@@ -1,10 +1,12 @@
 import { Metadata } from 'next'
-import { prisma } from "@/lib/database"
+import { prisma } from "@/lib/database";
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | The Weather & Everything',
   description: 'Learn how we collect, use, and protect your personal information.',
 }
+
+export const revalidate = 3600
 
 async function getPrivacyPolicy() {
   try {
@@ -51,51 +53,39 @@ function getDefaultPrivacyPolicy() {
       <li>To comply with legal obligations</li>
     </ul>
 
-    <h2>Information Sharing</h2>
-    <p>We do not sell, trade, or rent your personal information to third parties. We may share your information only in the following circumstances:</p>
-    <ul>
-      <li>With your explicit consent</li>
-      <li>To comply with legal requirements</li>
-      <li>To protect our rights and safety</li>
-      <li>With trusted service providers who assist our operations</li>
-    </ul>
-
     <h2>Data Security</h2>
-    <p>We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.</p>
+    <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.</p>
 
     <h2>Your Rights</h2>
-    <p>You have the right to:</p>
     <ul>
-      <li>Access your personal information</li>
-      <li>Correct inaccurate information</li>
-      <li>Request deletion of your data</li>
-      <li>Opt out of marketing communications</li>
+      <li>Access to your personal information</li>
+      <li>Correction of inaccurate data</li>
+      <li>Erasure of your personal information</li>
+      <li>Objection to processing</li>
       <li>Data portability</li>
+      <li>Restriction of processing</li>
     </ul>
 
+    <h2>Cookies and Similar Technologies</h2>
+    <p>We use cookies and similar technologies to enhance your experience on our website. You can control cookie usage through your browser settings.</p>
+
+    <h2>Third-Party Services</h2>
+    <p>We may share your information with trusted third parties who assist us in operating our website, conducting business, or serving our users, provided they agree to maintain confidentiality.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy periodically. We will notify you of any material changes through our website or other communication channels.</p>
+
     <h2>Contact Us</h2>
-    <p>If you have questions about this Privacy Policy, please contact us at privacy@twe.org or through our contact form.</p>
+    <p>If you have questions about this Privacy Policy, please contact us through our official channels.</p>
   `
 }
 
-export default async function PrivacyPolicyPage() {
+export default async function PrivacyPage() {
   const content = await getPrivacyPolicy()
 
   return (
-    <main className="min-h-screen">
-      <section className="relative min-h-[80vh] flex items-center overflow-hidden pt-20 bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center space-y-8">
-            <h1 className="text-4xl md:text-6xl font-hartone font-bold text-foreground">Privacy Policy</h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">Your privacy is important to us. Learn how we collect, use, and protect your personal information.</p>
-          </div>
-        </div>
-      </section>
-      <section className="py-16 bg-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="prose prose-lg dark:prose-invert mx-auto" dangerouslySetInnerHTML={{ __html: content }} />
-        </div>
-      </section>
-    </main>
+    <div className="container py-8 mx-auto prose prose-gray dark:prose-invert max-w-3xl">
+      <div dangerouslySetInnerHTML={{ __html: content }} />
+    </div>
   )
 }

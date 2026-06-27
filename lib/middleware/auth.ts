@@ -8,14 +8,31 @@ export function withAuth(handler: Function, requiredRoles?: UserRole[]) {
       const authHeader = request.headers.get('Authorization')
       const headerToken = authHeader?.replace('Bearer ', '')
       const cookieToken = request.cookies.get('accessToken')?.value
+      const refreshToken = request.cookies.get('refreshToken')?.value
       const token = headerToken || cookieToken
 
       if (!token) {
         return NextResponse.json({ error: 'No token provided' }, { status: 401 })
       }
 
-      const payload = AuthService.verifyAccessToken(token)
+      let payload = await AuthService.verifyAccessToken(token)
+      let newAccessToken: string | null = null
 
+      // If access token is invalid but refresh token exists, try to refresh
+      if (!payload && refreshToken) {
+        try {
+          const refreshPayload = await AuthService.verifyRefreshToken(refreshToken)
+          if (refreshPayload) {
+            // Generate new access token
+            newAccessToken = await AuthService.generateAccessToken(refreshPayload)
+            payload = refreshPayload
+          }
+        } catch (err) {
+          console.warn('🔁 Token refresh failed:', err)
+        }
+      }
+
+      // Still no valid payload, reject the request
       if (!payload) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
       }
@@ -28,8 +45,22 @@ export function withAuth(handler: Function, requiredRoles?: UserRole[]) {
       const enhancedRequest = request as NextRequest & { user: typeof payload }
       enhancedRequest.user = payload
 
-      return handler(enhancedRequest, context)
+      // Call handler and get response
+      const response = await handler(enhancedRequest, context)
+
+      // If we have a new access token and the response is a NextResponse, set it in cookies
+      if (newAccessToken && response instanceof NextResponse) {
+        response.cookies.set('accessToken', newAccessToken, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 15 * 60 // 15 minutes
+        })
+      }
+
+      return response
     } catch (error) {
+      console.error('Auth middleware error:', error)
       return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
     }
   }

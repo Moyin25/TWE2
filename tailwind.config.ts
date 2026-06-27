@@ -23,36 +23,6 @@ const config: Config = {
         helvetica: ["Helvetica Now Display", "sans-serif"],
       },
       colors: {
-        primary: {
-          DEFAULT: "#13714c",
-          light: "#a3e494",
-          dark: "#0c2b2d",
-        },
-        secondary: {
-          DEFAULT: "#b6b6b6",
-          light: "#f5f5f5",
-          dark: "#2d2d2d",
-        },
-        background: {
-          light: "#ffffff",
-          dark: "#121212",
-        },
-        text: {
-          light: "#000000",
-          dark: "#ffffff",
-        },
-        accent: {
-          light: "#13714c",
-          dark: "#a3e494",
-        },
-        muted: {
-          light: "#666666",
-          dark: "#a0a0a0",
-        },
-        border: {
-          light: "#e5e5e5",
-          dark: "#2d2d2d",
-        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -93,6 +63,10 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        "green-light": "#a3e494",
+        "green-dark": "#13714c",
+        teal: "#0c2b2d",
+        "dark-green": "#0c2b2d",
       },
       borderRadius: {
         lg: "var(--radius)",

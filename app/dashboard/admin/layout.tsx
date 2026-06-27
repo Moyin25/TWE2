@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout"
 import { useSession } from "@/hooks/useSession"
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  // Enable session management for admin users (30 minutes timeout)
+  // Re-enable session management with debugging logs
   useSession(30 * 60 * 1000)
 
   return <DashboardLayout>{children}</DashboardLayout>

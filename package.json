@@ -15,9 +15,6 @@
     "make-admin": "ts-node scripts/make-admin.ts",
     "check-role": "ts-node scripts/check-and-update-role.ts"
   },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
-  },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",

@@ -33,10 +33,24 @@ export default function BlogManager() {
 
   async function load() {
     setLoading(true)
-    const res = await fetch("/api/admin/blogs")
-    const data = await res.json()
-    setPosts(data.posts || [])
-    setLoading(false)
+    try {
+      const res = await fetch("/api/admin/blogs")
+      
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = '/auth/login'
+          return
+        }
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+      
+      const data = await res.json()
+      setPosts(data.posts || [])
+    } catch (error) {
+      console.error('Failed to load blogs:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])

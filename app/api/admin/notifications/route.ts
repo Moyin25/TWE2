@@ -1,25 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database";
-import { AuthService } from "@/lib/auth";
+import { withAuth } from "@/lib/middleware/auth";
+import { UserRole } from "@prisma/client";
 
-export async function GET(request: NextRequest) {
+async function getNotificationsHandler(request: NextRequest) {
   try {
-    // Extract token from Authorization header or cookie
-    const authHeader = request.headers.get('Authorization');
-    const headerToken = authHeader?.replace('Bearer ', '');
-    const cookieToken = request.cookies.get('accessToken')?.value;
-    const token = headerToken || cookieToken;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify token
-    const payload = AuthService.verifyAccessToken(token);
-    if (!payload || payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const notifications = await prisma.notification.findMany({
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -35,24 +20,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function createNotificationHandler(request: NextRequest) {
   try {
-    // Extract token from Authorization header or cookie
-    const authHeader = request.headers.get('Authorization');
-    const headerToken = authHeader?.replace('Bearer ', '');
-    const cookieToken = request.cookies.get('accessToken')?.value;
-    const token = headerToken || cookieToken;
-
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Verify token
-    const payload = AuthService.verifyAccessToken(token);
-    if (!payload || payload.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { title, description, type } = await request.json();
 
     if (!title || !description) {
@@ -79,3 +48,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const GET = withAuth(getNotificationsHandler, [UserRole.ADMIN]);
+export const POST = withAuth(createNotificationHandler, [UserRole.ADMIN]);

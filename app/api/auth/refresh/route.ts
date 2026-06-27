@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from 'next/server'
 import { AuthService } from '@/lib/auth'
 
@@ -41,6 +40,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       message: 'Token refreshed successfully',
+      token: newAccessToken, // Include the new token in the response for client-side updates
     })
 
     response.cookies.set('accessToken', newAccessToken, {

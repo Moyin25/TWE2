@@ -37,18 +37,32 @@ export default function UsersManager() {
 
   async function load() {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (roleFilter !== 'ALL') params.set('role', roleFilter)
-    if (searchQuery) params.set('q', searchQuery)
-    params.set('page', String(page))
-    params.set('limit', String(limit))
-    params.set('sortBy', sortBy)
-    params.set('sortOrder', sortOrder)
-    const res = await fetch(`/api/admin/users?${params.toString()}`)
-    const data = await res.json()
-    setUsers(data.users || [])
-    setTotalPages(data.pagination?.pages || 1)
-    setLoading(false)
+    try {
+      const params = new URLSearchParams()
+      if (roleFilter !== 'ALL') params.set('role', roleFilter)
+      if (searchQuery) params.set('q', searchQuery)
+      params.set('page', String(page))
+      params.set('limit', String(limit))
+      params.set('sortBy', sortBy)
+      params.set('sortOrder', sortOrder)
+      const res = await fetch(`/api/admin/users?${params.toString()}`)
+      
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = '/auth/login'
+          return
+        }
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+      
+      const data = await res.json()
+      setUsers(data.users || [])
+      setTotalPages(data.pagination?.pages || 1)
+    } catch (error) {
+      console.error('Failed to load users:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [roleFilter, page, sortBy, sortOrder])

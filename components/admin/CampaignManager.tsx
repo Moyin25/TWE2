@@ -62,22 +62,36 @@ export default function CampaignManager() {
 
   async function load() {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (status !== 'ALL') params.set('status', status)
-    if (category) params.set('category', category)
-    if (location) params.set('location', location)
-    if (urgency !== 'ALL') params.set('urgency', urgency)
-    if (impactLevel !== 'ALL') params.set('impactLevel', impactLevel)
-    if (q) params.set('q', q)
-    params.set('page', String(page))
-    params.set('limit', String(limit))
-    params.set('sortBy', sortBy)
-    params.set('sortOrder', sortOrder)
-    const res = await fetch(`/api/admin/campaigns?${params.toString()}`)
-    const data = await res.json()
-    setCampaigns(data.campaigns || [])
-    setTotalPages(data.pagination?.pages || 1)
-    setLoading(false)
+    try {
+      const params = new URLSearchParams()
+      if (status !== 'ALL') params.set('status', status)
+      if (category) params.set('category', category)
+      if (location) params.set('location', location)
+      if (urgency !== 'ALL') params.set('urgency', urgency)
+      if (impactLevel !== 'ALL') params.set('impactLevel', impactLevel)
+      if (q) params.set('q', q)
+      params.set('page', String(page))
+      params.set('limit', String(limit))
+      params.set('sortBy', sortBy)
+      params.set('sortOrder', sortOrder)
+      const res = await fetch(`/api/admin/campaigns?${params.toString()}`)
+      
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = '/auth/login'
+          return
+        }
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+      
+      const data = await res.json()
+      setCampaigns(data.campaigns || [])
+      setTotalPages(data.pagination?.pages || 1)
+    } catch (error) {
+      console.error('Failed to load campaigns:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { 

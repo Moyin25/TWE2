@@ -82,20 +82,25 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    // Properly set cookies with security considerations
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      secure: process.env.NODE_ENV === 'production', // Secure in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Strict in production
       path: '/',
       maxAge: 15 * 60, // 15 minutes
+      // Explicitly set domain to avoid subdomain issues
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined
     })
 
     response.cookies.set('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      secure: process.env.NODE_ENV === 'production', // Secure in production
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Strict in production
       path: '/',
       maxAge: 7 * 24 * 60 * 60, // 7 days
+      // Explicitly set domain to avoid subdomain issues
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined
     })
 
     return response

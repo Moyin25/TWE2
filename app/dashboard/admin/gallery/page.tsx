@@ -10,9 +10,9 @@ function ensureRole(role: UserRole, allowed: UserRole[]) {
   if (!allowed.includes(role)) redirect("/auth/login")
 }
 
-export default function AdminGalleryPage() {
+export default async function AdminGalleryPage() {
   const token = cookies().get("accessToken")?.value
-  const payload = token ? AuthService.verifyAccessToken(token) : null
+  const payload = token ? await AuthService.verifyAccessToken(token) : null
   if (!payload) redirect("/auth/login")
   ensureRole(payload.role, [UserRole.ADMIN])
 

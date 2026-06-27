@@ -5,6 +5,8 @@ import { BlogPostItem } from '@/hooks/useBlogFilter'
 import { prisma } from "@/lib/database"
 import { PostStatus } from "@prisma/client"
 
+export const revalidate = 300
+
 export default async function BlogPage() {
   const posts = await prisma.blogPost.findMany({
     where: { status: PostStatus.PUBLISHED },

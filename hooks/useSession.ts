@@ -17,7 +17,7 @@ export function useSession(sessionTimeout: number = 3600000) { // 1 hour default
     }
 
     const newTimer = setTimeout(() => {
-      handleLogout()
+      handleLogoutWithServerCheck()
     }, sessionTimeout)
 
     localStorage.setItem('logoutTimer', newTimer.toString())
@@ -36,20 +36,54 @@ export function useSession(sessionTimeout: number = 3600000) { // 1 hour default
     router.push('/auth/login')
   }, [router])
 
-  const checkSession = useCallback(() => {
-    const lastActivity = localStorage.getItem('lastActivity')
-    if (!lastActivity) {
-      extendSession()
-      return
+  const handleLogoutWithServerCheck = useCallback(async () => {
+    try {
+      // First check if the session is still valid on the server
+      const response = await fetch('/api/debug-auth');
+      const result = await response.json();
+
+      if (result.authenticated) {
+        // Server session is still valid, extend client-side session
+        console.log('Server session still valid, extending client session');
+        extendSession();
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking server session:', error);
     }
 
-    const timeSinceActivity = Date.now() - parseInt(lastActivity)
-    if (timeSinceActivity > sessionTimeout) {
-      handleLogout()
-    } else {
+    // If server session is invalid or check failed, proceed with logout
+    console.log('Logging out due to invalid server session or failed check');
+    handleLogout();
+  }, [handleLogout, extendSession]);
+
+  const checkSession = useCallback(() => {
+    try {
+      const lastActivity = localStorage.getItem('lastActivity')
+      console.log('useSession: checkSession called, lastActivity:', lastActivity)
+
+      if (!lastActivity) {
+        console.log('useSession: No lastActivity found, extending session')
+        extendSession()
+        return
+      }
+
+      const timeSinceActivity = Date.now() - parseInt(lastActivity)
+      console.log('useSession: Time since activity:', timeSinceActivity, 'timeout:', sessionTimeout)
+
+      if (timeSinceActivity > sessionTimeout) {
+        console.log('useSession: Session expired, checking server status')
+        handleLogoutWithServerCheck()
+      } else {
+        console.log('useSession: Session valid, extending')
+        extendSession()
+      }
+    } catch (error) {
+      console.error('useSession: Error in checkSession:', error)
+      // Don't logout on localStorage errors, just extend session
       extendSession()
     }
-  }, [sessionTimeout, extendSession, handleLogout])
+  }, [sessionTimeout, extendSession, handleLogoutWithServerCheck])
 
   useEffect(() => {
     // Set up activity listeners
@@ -86,6 +120,7 @@ export function useSession(sessionTimeout: number = 3600000) { // 1 hour default
   return {
     extendSession,
     handleLogout,
+    handleLogoutWithServerCheck,
     checkSession
   }
 }

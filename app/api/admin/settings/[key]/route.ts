@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { AuthService } from "@/lib/auth"
+import { withAuth } from "@/lib/middleware/auth"
 import { UserRole, EntityType } from "@prisma/client"
 import { prisma } from "@/lib/database"
 import { logAudit } from "@/lib/audit"
@@ -11,7 +10,7 @@ function ensureRole(role: UserRole, allowed: UserRole[]) {
   }
 }
 
-export async function GET(
+async function getSettingHandler(
   request: NextRequest,
   { params }: { params: { key: string } }
 ) {
@@ -31,16 +30,12 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
+async function updateSettingHandler(
+  request: NextRequest & { user: any },
   { params }: { params: { key: string } }
 ) {
   try {
-    const token = cookies().get("accessToken")?.value
-    const payload = token ? AuthService.verifyAccessToken(token) : null
-    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const roleCheck = ensureRole(payload.role, [UserRole.ADMIN])
+    const roleCheck = ensureRole(request.user.role, [UserRole.ADMIN])
     if (roleCheck) return roleCheck
 
     const body = await request.json()
@@ -73,7 +68,7 @@ export async function PUT(
       entityId: setting.id,
       action: "UPDATE",
       changedData: { key: params.key, value, description, category },
-      performedById: payload.userId
+      performedById: request.user.userId
     })
 
     return NextResponse.json(setting)
@@ -83,16 +78,12 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
+async function deleteSettingHandler(
+  request: NextRequest & { user: any },
   { params }: { params: { key: string } }
 ) {
   try {
-    const token = cookies().get("accessToken")?.value
-    const payload = token ? AuthService.verifyAccessToken(token) : null
-    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const roleCheck = ensureRole(payload.role, [UserRole.ADMIN])
+    const roleCheck = ensureRole(request.user.role, [UserRole.ADMIN])
     if (roleCheck) return roleCheck
 
     // Fetch the setting to get its ID for audit log
@@ -111,7 +102,7 @@ export async function DELETE(
       entityId: setting.id,
       action: "DELETE",
       changedData: { key: params.key },
-      performedById: payload.userId
+      performedById: request.user.userId
     })
 
     return NextResponse.json({ message: "Setting deleted successfully" })
@@ -120,3 +111,7 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export const GET = getSettingHandler
+export const PUT = withAuth(updateSettingHandler, [UserRole.ADMIN])
+export const DELETE = withAuth(deleteSettingHandler, [UserRole.ADMIN])

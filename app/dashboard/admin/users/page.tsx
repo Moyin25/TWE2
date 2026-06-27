@@ -13,7 +13,7 @@ function ensureRole(role: UserRole, allowed: UserRole[]) {
 
 export default async function AdminUsersPage() {
   const token = cookies().get("accessToken")?.value
-  const payload = token ? AuthService.verifyAccessToken(token) : null
+  const payload = token ? await AuthService.verifyAccessToken(token) : null
   if (!payload) redirect("/auth/login")
   ensureRole(payload.role, [UserRole.ADMIN])
 

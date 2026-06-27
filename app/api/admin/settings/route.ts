@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { AuthService } from "@/lib/auth"
+import { withAuth } from "@/lib/middleware/auth"
 import { UserRole, EntityType } from "@prisma/client"
 import { prisma } from "@/lib/database"
 import { logAudit } from "@/lib/audit"
@@ -11,13 +10,9 @@ function ensureRole(role: UserRole, allowed: UserRole[]) {
   }
 }
 
-export async function GET() {
+async function getSettingsHandler(request: NextRequest & { user: any }) {
   try {
-    const token = cookies().get("accessToken")?.value
-    const payload = token ? AuthService.verifyAccessToken(token) : null
-    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const roleCheck = ensureRole(payload.role, [UserRole.ADMIN])
+    const roleCheck = ensureRole(request.user.role, [UserRole.ADMIN])
     if (roleCheck) return roleCheck
 
     // Using raw query instead of prisma.setting.findMany due to Prisma client not being regenerated
@@ -30,13 +25,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function createSettingsHandler(request: NextRequest & { user: any }) {
   try {
-    const token = cookies().get("accessToken")?.value
-    const payload = token ? AuthService.verifyAccessToken(token) : null
-    if (!payload) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const roleCheck = ensureRole(payload.role, [UserRole.ADMIN])
+    const roleCheck = ensureRole(request.user.role, [UserRole.ADMIN])
     if (roleCheck) return roleCheck
 
     const body = await request.json()
@@ -80,7 +71,7 @@ export async function POST(request: NextRequest) {
       entityId: setting.id,
       action: "UPDATE",
       changedData: { key, value, description, category },
-      performedById: payload.userId
+      performedById: request.user.userId
     })
 
     return NextResponse.json(setting)
@@ -89,3 +80,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export const GET = withAuth(getSettingsHandler, [UserRole.ADMIN])
+export const POST = withAuth(createSettingsHandler, [UserRole.ADMIN])

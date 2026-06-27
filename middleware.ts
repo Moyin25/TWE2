@@ -1,113 +1,225 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { AuthService } from '@/lib/auth'
 import { UserRole } from '@prisma/client'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // 👀 Read tokens - improved with better error handling
-  const accessToken = request.cookies.get('accessToken')?.value
-  const refreshToken = request.cookies.get('refreshToken')?.value
+  // List of public paths that don't require authentication
+  const publicPaths = [
+    '/',
+    '/about',
+    '/blog',
+    '/contact',
+    '/faq',
+    '/gallery',
+    '/terms',
+    '/privacy',
+    '/help',
+    '/careers',
+    '/research',
+    '/join',
+    '/auth/login',
+    '/auth/register',
+    '/auth/confirmation',
+    '/api/auth/login',
+    '/api/auth/refresh',
+    '/api/auth/logout',
+    '/api/webhook',
+    '/api/health',
+    '/api/socket',
+    '/api/ws',
+    '/api/debug-auth',
+    '/api/test-cookies',
+    // Static assets
+    '/_next/',
+    '/api/trpc/',
+  ]
 
-  console.log('🌍 middleware pathname:', pathname)
-  console.log('🍪 accessToken:', accessToken?.slice(0, 20) + '...')
-  console.log('🍪 refreshToken:', refreshToken?.slice(0, 20) + '...')
+  // Check if the current path is a public path
+  const isPublicPath = publicPaths.some(path => 
+    pathname === path || pathname.startsWith(path)
+  )
 
-  // 🚫 Only protect /dashboard routes
-  if (!pathname.startsWith('/dashboard')) {
-    console.log('Skipping middleware for non-dashboard route')
+  // Skip authentication for public paths
+  if (isPublicPath) {
     return NextResponse.next()
   }
 
-  let payload = null
-  
-  // Try to verify access token if it exists
-  if (accessToken) {
-    try {
-      payload = await AuthService.verifyAccessToken(accessToken)
-      console.log('✅ Access token payload:', payload)
-    } catch (error) {
-      console.warn('❌ Invalid access token:', error)
-    }
-  }
+  // Get tokens from cookies
+  const accessToken = request.cookies.get('accessToken')?.value
+  const refreshToken = request.cookies.get('refreshToken')?.value
 
-  // If access token is not valid but refresh token exists, try to refresh
-  if (!payload && refreshToken) {
-    try {
-      const refreshPayload = await AuthService.verifyRefreshToken(refreshToken)
-      console.log('🔄 Refresh token payload:', refreshPayload)
-
-      if (refreshPayload) {
-        // Generate new access token
-        const newAccessToken = await AuthService.generateAccessToken(refreshPayload)
-        console.log('🆕 Generated new access token:', newAccessToken?.slice(0, 20) + '...')
-
-        // Inject into cookies
-          const response = NextResponse.next()
-        response.cookies.set('accessToken', newAccessToken, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 15 * 60 // 15 minutes
-        })
-
-        payload = refreshPayload // treat as valid for routing
-        console.log('✅ Access token refreshed')
-        return response
+  // Handle API routes that require authentication
+  if (pathname.startsWith('/api/')) {
+    // Special handling for admin and dashboard API routes
+    if (pathname.startsWith('/api/admin') || pathname.startsWith('/api/dashboard')) {
+      let payload = null
+      
+      // First try to verify access token
+      if (accessToken) {
+        try {
+          payload = await AuthService.verifyAccessToken(accessToken)
+        } catch (error) {
+          console.warn('Access token verification failed:', error)
+        }
       }
-    } catch (err) {
-      console.warn('🔁 Token refresh failed:', err)
+
+      // If access token is invalid but we have a refresh token, try to refresh
+      if (!payload && refreshToken) {
+        try {
+          const refreshPayload = await AuthService.verifyRefreshToken(refreshToken)
+          
+          if (refreshPayload && await AuthService.validateRefreshToken(refreshToken)) {
+            const newAccessToken = await AuthService.generateAccessToken(refreshPayload)
+            
+            // Create response with new access token
+            const response = NextResponse.next()
+            response.cookies.set('accessToken', newAccessToken, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'strict',
+              maxAge: 15 * 60, // 15 minutes
+              path: '/'
+            })
+            
+            return response
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error)
+        }
+      }
+
+      // If we still don't have a valid payload, return 401 for API routes
+      if (!payload) {
+        return NextResponse.json(
+          { error: 'Unauthorized: Invalid or expired token' }, 
+          { status: 401 }
+        )
+      }
+
+      // Verify user role for admin routes
+      if (pathname.startsWith('/api/admin') && payload.role !== UserRole.ADMIN) {
+        return NextResponse.json(
+          { error: 'Forbidden: Insufficient permissions' }, 
+          { status: 403 }
+        )
+      }
+      
+      return NextResponse.next()
     }
+    
+    // For other API routes, continue normally
+    return NextResponse.next()
   }
 
-  // ❌ No valid tokens at all
-  if (!payload) {
-    console.log('❌ No valid tokens, redirecting to login')
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
-  const userRole = payload.role
-  console.log('👥 User role:', userRole)
-
-  // 🔁 Role-based redirect
-  if (pathname === '/dashboard') {
-    console.log('🔀 Redirecting based on role')
-    switch (userRole) {
-      case UserRole.ADMIN: 
-        console.log('Redirecting ADMIN to admin dashboard')
-        return NextResponse.redirect(new URL('/dashboard/admin', request.url))
-      case UserRole.VOLUNTEER: 
-        console.log('Redirecting VOLUNTEER to volunteer dashboard')
-        return NextResponse.redirect(new URL('/dashboard/volunteer', request.url))
-      case UserRole.SPONSOR: 
-        console.log('Redirecting SPONSOR to sponsor dashboard')
-        return NextResponse.redirect(new URL('/dashboard/sponsor', request.url))
-      default: 
-        console.log('Redirecting unknown role to login')
-        return NextResponse.redirect(new URL('/auth/login', request.url))
+  // Handle protected UI routes (dashboard, etc.)
+  if (pathname.startsWith('/dashboard')) {
+    let payload = null
+    
+    // First try to verify access token
+    if (accessToken) {
+      try {
+        payload = await AuthService.verifyAccessToken(accessToken)
+      } catch (error) {
+        console.warn('Access token verification failed:', error)
+      }
     }
+
+    // If access token is invalid but we have a refresh token, try to refresh
+    if (!payload && refreshToken) {
+      try {
+        const refreshPayload = await AuthService.verifyRefreshToken(refreshToken)
+        
+        if (refreshPayload && await AuthService.validateRefreshToken(refreshToken)) {
+          const newAccessToken = await AuthService.generateAccessToken(refreshPayload)
+          
+          // Redirect to the same page but set the new access token
+          const response = NextResponse.redirect(request.nextUrl)
+          response.cookies.set('accessToken', newAccessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 15 * 60, // 15 minutes
+            path: '/'
+          })
+          
+          return response
+        }
+      } catch (error) {
+        console.error('Token refresh failed:', error)
+      }
+    }
+
+    // If we don't have a valid token, redirect to login
+    if (!payload) {
+      const response = NextResponse.redirect(
+        new URL(`/auth/login?callbackUrl=${encodeURIComponent(request.url)}`, request.url)
+      )
+      return response
+    }
+
+    // Handle role-based routing for dashboard
+    if (pathname === '/dashboard' && payload.role) {
+      let redirectPath = ''
+      switch (payload.role) {
+        case UserRole.ADMIN:
+          redirectPath = '/dashboard/admin'
+          break
+        case UserRole.VOLUNTEER:
+          redirectPath = '/dashboard/volunteer'
+          break
+        case UserRole.SPONSOR:
+          redirectPath = '/dashboard/sponsor'
+          break
+        default:
+          redirectPath = '/auth/login'
+      }
+      
+      if (redirectPath) {
+        return NextResponse.redirect(new URL(redirectPath, request.url))
+      }
+    }
+
+    // Role guard for specific dashboard sections
+    if (
+      pathname.startsWith('/dashboard/admin') && 
+      payload.role !== UserRole.ADMIN
+    ) {
+      return NextResponse.redirect(new URL('/auth/login', request.url))
+    }
+
+    if (
+      pathname.startsWith('/dashboard/volunteer') &&
+      payload.role !== UserRole.VOLUNTEER &&
+      payload.role !== UserRole.ADMIN
+    ) {
+      return NextResponse.redirect(new URL('/dashboard/sponsor', request.url))
+    }
+
+    if (
+      pathname.startsWith('/dashboard/sponsor') &&
+      payload.role !== UserRole.SPONSOR &&
+      payload.role !== UserRole.ADMIN
+    ) {
+      return NextResponse.redirect(new URL('/dashboard/volunteer', request.url))
+    }
+
+    return NextResponse.next()
   }
 
-  // 🔐 Role guards
-  console.log('🔐 Checking role guards for path:', pathname)
-  if (pathname.startsWith('/dashboard/admin') && userRole !== UserRole.ADMIN) {
-    console.log('🚫 Unauthorized access to admin area by user with role:', userRole)
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-  if (pathname.startsWith('/dashboard/volunteer') && userRole !== UserRole.VOLUNTEER && userRole !== UserRole.ADMIN) {
-    console.log('🚫 Unauthorized access to volunteer area by user with role:', userRole)
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-  if (pathname.startsWith('/dashboard/sponsor') && userRole !== UserRole.SPONSOR && userRole !== UserRole.ADMIN) {
-    console.log('🚫 Unauthorized access to sponsor area by user with role:', userRole)
-    return NextResponse.redirect(new URL('/auth/login', request.url))
-  }
-
-  console.log('✅ Access granted')
+  // For all other protected routes, just continue
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 }

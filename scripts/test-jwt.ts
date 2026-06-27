@@ -33,5 +33,6 @@ try {
   const verified = jwt.verify(token, 'wrong-secret')
   console.log('Verified payload with wrong secret:', verified)
 } catch (error) {
-  console.error('Verification error with wrong secret:', error.message)
+  const message = error instanceof Error ? error.message : String(error)
+  console.error('Verification error with wrong secret:', message)
 }

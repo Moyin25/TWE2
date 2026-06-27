@@ -3,6 +3,8 @@ import { prisma } from "@/lib/database"
 import { PostStatus } from "@prisma/client"
 import BlogDetailContent from "@/components/sections/BlogDetailContent"
 
+export const revalidate = 300
+
 export default async function BlogDetailPage({ 
   params 
 }: { 

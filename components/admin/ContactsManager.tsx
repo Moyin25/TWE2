@@ -32,13 +32,27 @@ export default function ContactsManager() {
 
   async function load() {
     setLoading(true)
-    const params = new URLSearchParams()
-    if (status !== "ALL") params.set("status", status)
-    if (q) params.set("q", q)
-    const res = await fetch(`/api/admin/contacts?${params.toString()}`)
-    const data = await res.json()
-    setContacts(data.contacts || [])
-    setLoading(false)
+    try {
+      const params = new URLSearchParams()
+      if (status !== "ALL") params.set("status", status)
+      if (q) params.set("q", q)
+      const res = await fetch(`/api/admin/contacts?${params.toString()}`)
+      
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          window.location.href = '/auth/login'
+          return
+        }
+        throw new Error(`HTTP error! status: ${res.status}`)
+      }
+      
+      const data = await res.json()
+      setContacts(data.contacts || [])
+    } catch (error) {
+      console.error('Failed to load contacts:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [status])
